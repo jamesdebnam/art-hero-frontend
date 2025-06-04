@@ -41,11 +41,22 @@ update msg model =
             {model | pixelMap = Dict.insert pixelCoords color model.pixelMap}
 
 
---get_color: Color -> String
---get_color color =
---    case color of
---        Red -> '#ff5733'
---
+get_pixel_color_from_coords: PixelCoords ->  Model -> String
+get_pixel_color_from_coords coords model =
+    Dict.get coords model.pixelMap  |> get_color
+
+get_color: Maybe Color -> String
+get_color color =
+    case color of
+        Nothing -> "white"
+        Just definedColor ->
+           case definedColor of
+                Red -> "#ff5733"
+                Blue -> "blue"
+                Black -> "black"
+                Green -> "green"
+                Yellow -> "yellow"
+                White -> "white"
 
 
 view_pixel_grid: Model -> Html Msg
@@ -59,7 +70,7 @@ view_pixel_grid model = div [
                                     ] (
                                         List.indexedMap (\col _ ->
                                             div
-                                                [ style "background-color" "white"
+                                                [ style "background-color" (get_pixel_color_from_coords (col, row) model)
                                                 , style "border" "1px solid black"
                                                 , style "height" "30px"
                                                 , style "width" "30px"

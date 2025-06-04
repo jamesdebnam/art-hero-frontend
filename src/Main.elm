@@ -34,7 +34,7 @@ update msg model =
             {model | activeColor = color}
 
         PaintPixel color pixelCoords ->
-            model
+            {model | pixelMap = Dict.insert pixelCoords color model.pixelMap }
 
 
 

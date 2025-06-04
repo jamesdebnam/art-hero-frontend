@@ -11,15 +11,15 @@ main =
 
 type Color = Red | Black | Blue | Green | Yellow | White
 type alias PixelCoords = (Int, Int)
-type alias PixelGrid = Dict PixelCoords Color
+type alias PixelMap = Dict PixelCoords Color
 
 type alias Model = {
             activeColor: Color,
-            pixelGrid: PixelGrid
-            }
+            pixelMap: PixelMap
+          }
 
 init : Model
-init = {activeColor=  Red, pixelGrid = Dict.empty }
+init = {activeColor=  Red, pixelMap = Dict.empty }
 
 
 type Msg

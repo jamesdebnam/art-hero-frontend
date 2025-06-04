@@ -68,7 +68,12 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         UpdateMouseDown mouseIsDown ->
-            { model | mouseIsDown = mouseIsDown }
+            case mouseIsDown of
+                True ->
+                    { model | mouseIsDown = mouseIsDown }
+
+                False ->
+                    { model | mouseIsDown = mouseIsDown, history = model.pixelMap :: model.history }
 
         UpdateActiveColor color ->
             { model | activeColor = color }
@@ -95,9 +100,9 @@ update msg model =
                     in
                     { model
                         | pixelMap = newPixelMap
-                        , history = model.pixelMap :: model.history
                     }
-                (MouseOver, False) ->
+
+                ( MouseOver, False ) ->
                     model
 
         Undo ->
@@ -181,7 +186,7 @@ view_pixel_grid model =
                                     [ style "background-color" (get_pixel_color_from_coords ( col, row ) model)
                                     , class "pixel"
                                     , onClick (PaintPixel model.activeColor ( col, row ) Clicked)
-                                    , onMouseOver (PaintPixel model.activeColor (col, row) MouseOver)
+                                    , onMouseOver (PaintPixel model.activeColor ( col, row ) MouseOver)
                                     ]
                                     []
                             )

@@ -16,13 +16,17 @@ type Color = Red | Black | Blue | Green | Yellow | White
 type alias PixelCoords = (Int, Int)
 type alias PixelMap = Dict PixelCoords Color
 
+type alias History = List (PixelMap)
+
 type alias Model = {
             activeColor: Color,
-            pixelMap: PixelMap
+            pixelMap: PixelMap,
+            history: History
           }
 
+
 init : Model
-init = {activeColor=  Red, pixelMap = Dict.empty }
+init = {activeColor=  Red, pixelMap = Dict.empty, history = [] }
 
 
 type Msg
@@ -37,8 +41,13 @@ update msg model =
             {model | activeColor = color}
 
         PaintPixel color pixelCoords ->
-            Debug.log "painting"
-            {model | pixelMap = Dict.insert pixelCoords color model.pixelMap}
+            let
+              newPixelMap = Dict.insert pixelCoords color model.pixelMap
+            in
+              {model |
+                pixelMap = newPixelMap,
+                history = newPixelMap :: model.history 
+              }
 
 
 get_pixel_color_from_coords: PixelCoords ->  Model -> String

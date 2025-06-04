@@ -46,10 +46,15 @@ init =
     { mouseIsDown = False, activeColor = Red, pixelMap = Dict.empty, history = [ Dict.empty ], future = [ Dict.empty ] }
 
 
+type MouseAction
+    = Clicked
+    | MouseOver
+
+
 type Msg
     = UpdateMouseDown Bool
     | UpdateActiveColor Color
-    | PaintPixel Color PixelCoords
+    | PaintPixel Color PixelCoords MouseAction
     | Undo
     | Redo
 
@@ -63,15 +68,29 @@ update msg model =
         UpdateActiveColor color ->
             { model | activeColor = color }
 
-        PaintPixel color pixelCoords ->
-            let
-                newPixelMap =
-                    Dict.insert pixelCoords color model.pixelMap
-            in
-            { model
-                | pixelMap = newPixelMap
-                , history = model.pixelMap :: model.history
-            }
+        PaintPixel color pixelCoords mouseAction ->
+            case ( mouseAction, model.mouseIsDown ) of
+                ( Clicked, _ ) ->
+                    let
+                        newPixelMap =
+                            Dict.insert pixelCoords color model.pixelMap
+                    in
+                    { model
+                        | pixelMap = newPixelMap
+                        , history = model.pixelMap :: model.history
+                    }
+
+                ( MouseOver, True ) ->
+                    let
+                        newPixelMap =
+                            Dict.insert pixelCoords color model.pixelMap
+                    in
+                    { model
+                        | pixelMap = newPixelMap
+                        , history = model.pixelMap :: model.history
+                    }
+                (MouseOver, False) ->
+                    model
 
         Undo ->
             case model.history of
@@ -145,7 +164,8 @@ view_pixel_grid model =
                                 div
                                     [ style "background-color" (get_pixel_color_from_coords ( col, row ) model)
                                     , class "pixel"
-                                    , onClick (PaintPixel model.activeColor ( col, row ))
+                                    , onClick (PaintPixel model.activeColor ( col, row ) Clicked)
+                                    , onMouseOver (PaintPixel model.activeColor (col, row) MouseOver)
                                     ]
                                     []
                             )

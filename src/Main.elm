@@ -22,12 +22,13 @@ init = {activeColor=  Red, pixelGrid =  List.repeat 6 (List.repeat 6 White) }
 
 type Msg
   = UpdateActiveColor Color
-  | PaintPixel Color
+  | PaintPixel Color PixelCoords
 
 
 type alias PixelCoords = (Int, Int)
 update : Msg -> Model -> (Model, Cmd)
 update msg model =
+
 
 
 

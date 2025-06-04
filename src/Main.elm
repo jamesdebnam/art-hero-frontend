@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
+import Debug
 import Html exposing (Html, button, div, h1, text)
 import Html.Events exposing (onClick)
 
@@ -27,13 +28,14 @@ type Msg
   | PaintPixel Color PixelCoords
 
 
-update : Msg -> Model -> (Model)
+update : Msg -> Model -> Model
 update msg model =
     case msg of
         UpdateActiveColor color ->
             {model | activeColor = color}
 
         PaintPixel color pixelCoords ->
+            Debug.log "painting"
             {model | pixelMap = Dict.insert pixelCoords color model.pixelMap}
 
 
@@ -43,4 +45,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
   div []
-    [ h1 [] [ text "this is a page"] ]
+    [
+      h1 [ onClick (PaintPixel Blue (0,0)) ] [ text "this is a page"],
+      h1 [ onClick (PaintPixel Red (1,1)) ] [ text "this is also a page"]
+    ]

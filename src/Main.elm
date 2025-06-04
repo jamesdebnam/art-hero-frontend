@@ -100,6 +100,7 @@ update msg model =
                     in
                     { model
                         | pixelMap = newPixelMap
+                        , future = []
                     }
 
                 ( MouseOver, False ) ->

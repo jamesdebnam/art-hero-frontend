@@ -11,6 +11,11 @@ main =
     Browser.sandbox { init = init, update = update, view = view }
 
 
+maxHistorySize : Int
+maxHistorySize = 100
+maxFutureSize : Int
+maxFutureSize = 100
+
 type Color
     = Red
     | Black
@@ -74,10 +79,13 @@ update msg model =
                     let
                         newPixelMap =
                             Dict.insert pixelCoords color model.pixelMap
+                        newHistory =
+                            model.pixelMap :: model.history
                     in
                     { model
                         | pixelMap = newPixelMap
-                        , history = model.pixelMap :: model.history
+                        , history = List.take maxHistorySize newHistory
+                        , future = []
                     }
 
                 ( MouseOver, True ) ->
@@ -94,11 +102,15 @@ update msg model =
 
         Undo ->
             case model.history of
-                previousState :: restOfTheList ->
+                currentState :: previousState :: restOfTheList ->
+                    let
+                        newFuture = 
+                            currentState :: model.future
+                    in
                     { model
                         | pixelMap = previousState
-                        , history = restOfTheList
-                        , future = model.pixelMap :: model.future
+                        , history = previousState :: restOfTheList
+                        , future = List.take maxFutureSize newFuture
                     }
 
                 _ ->
@@ -106,11 +118,15 @@ update msg model =
 
         Redo ->
             case model.future of
-                redo :: restOfTheList ->
+                futureState :: restOfTheList ->
+                    let
+                        newHistory =
+                            futureState :: model.history
+                    in
                     { model
-                        | pixelMap = redo
+                        | pixelMap = futureState
                         , future = restOfTheList
-                        , history = model.pixelMap :: model.history
+                        , history = List.take maxHistorySize newHistory
                     }
 
                 _ ->

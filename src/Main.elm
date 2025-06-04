@@ -26,8 +26,14 @@ type Msg
 
 
 type alias PixelCoords = (Int, Int)
-update : Msg -> Model -> (Model, Cmd)
+update : Msg -> Model -> (Model)
 update msg model =
+    case msg of
+        UpdateActiveColor color ->
+            {model | activeColor = color}
+
+        PaintPixel color pixelCoords ->
+            {model | }
 
 
 

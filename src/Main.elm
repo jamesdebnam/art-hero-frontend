@@ -21,18 +21,20 @@ type alias History = List (PixelMap)
 type alias Model = {
             activeColor: Color,
             pixelMap: PixelMap,
-            history: History
+            history: History,
+            future: History
           }
 
 
 init : Model
-init = {activeColor=  Red, pixelMap = Dict.empty, history = [Dict.empty] }
+init = {activeColor=  Red, pixelMap = Dict.empty, history = [Dict.empty], future = [Dict.empty] }
 
 
 type Msg
   = UpdateActiveColor Color
   | PaintPixel Color PixelCoords
   | Undo
+  | Redo
 
 
 update : Msg -> Model -> Model
@@ -56,11 +58,24 @@ update msg model =
               {
                 model |
                 pixelMap = previousState,
-                history = restOfTheList
+                history = restOfTheList,
+                future = model.pixelMap :: model.future
               }
             _ ->
               model
 
+        Redo ->
+          case model.future of
+            redo :: restOfTheList ->
+              {
+                model |
+                pixelMap = redo,
+                future = restOfTheList,
+                history = model.pixelMap :: model.history
+              }
+            _ ->
+              model
+          
 
 get_pixel_color_from_coords: PixelCoords ->  Model -> String
 get_pixel_color_from_coords coords model =
@@ -115,6 +130,7 @@ view model =
       view_color_button model,
       div [class "column"] [
       button [onClick Undo] [text "Undo"],
+      button [onClick Redo] [text "Redo"],
       view_pixel_grid model
       ]
       ]

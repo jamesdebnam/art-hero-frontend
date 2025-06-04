@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "elm-live": "^4.0.2"
+  },
+  "scripts": {
+    "start": "elm-live src/Main.elm --start-page=index.html -- --output=elm.js",
+    "lint": "elm-format . --yes"
+  },
+  "dependencies": {
+    "elm-format": "^0.8.7"
+  }
+}

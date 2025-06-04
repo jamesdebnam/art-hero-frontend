@@ -26,12 +26,13 @@ type alias Model = {
 
 
 init : Model
-init = {activeColor=  Red, pixelMap = Dict.empty, history = [] }
+init = {activeColor=  Red, pixelMap = Dict.empty, history = [Dict.empty] }
 
 
 type Msg
   = UpdateActiveColor Color
   | PaintPixel Color PixelCoords
+  | Undo
 
 
 update : Msg -> Model -> Model
@@ -41,13 +42,24 @@ update msg model =
             {model | activeColor = color}
 
         PaintPixel color pixelCoords ->
-            let
-              newPixelMap = Dict.insert pixelCoords color model.pixelMap
-            in
-              {model |
-                pixelMap = newPixelMap,
-                history = newPixelMap :: model.history 
+          let
+            newPixelMap = Dict.insert pixelCoords color model.pixelMap
+          in
+            {model |
+              pixelMap = newPixelMap,
+              history = model.pixelMap :: model.history
+            }
+        
+        Undo ->
+          case model.history of 
+            previousState :: restOfTheList ->
+              {
+                model |
+                pixelMap = previousState,
+                history = restOfTheList
               }
+            _ ->
+              model
 
 
 get_pixel_color_from_coords: PixelCoords ->  Model -> String

@@ -89,8 +89,20 @@ view_pixel_grid model = div [
                                             )  items
                                         ) ) (List.repeat 6 (List.repeat 6 0)))
 
-
-
+view_color_button: Model -> Html Msg
+view_color_button model = div [
+    style "display" "flex",
+    style "flex-direction" "column",
+    style "width" "70px"
+    ] (List.map (\color ->
+        button
+            [ onClick (UpdateActiveColor color)
+            , style "background-color" (colorToString color)
+            , style "margin" "1px"
+            , style "padding" "10px"
+            ]
+            [ text ""]
+        ) [Red, Black, Blue, Green, Yellow, White])
 
 
 view : Model -> Html Msg
@@ -99,5 +111,29 @@ view model =
     [
       h1 [ onClick (PaintPixel Blue (0,0)) ] [ text "this is a page"],
       h1 [ onClick (PaintPixel Red (1,1)) ] [ text "this is also a page"],
-      view_pixel_grid model
+      view_pixel_grid model,
+      view_color_button model
     ]
+
+
+colorToString : Color -> String
+colorToString color =
+    case color of
+        Red ->
+            "Red"
+
+        Black ->
+            "Black"
+
+        Blue ->
+            "Blue"
+
+        Green ->
+            "Green"
+
+        Yellow ->
+            "Yellow"
+
+        White ->
+            "White"
+   

@@ -2,11 +2,11 @@ module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Debug
-import Html exposing (Html, button, div, h1, text)
+import Html exposing (Html, button, div, h1,p, text)
 import Html exposing (Html, button, div, text)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (class, style)
 import Html.Events exposing (onClick)
+
 
 
 main =
@@ -81,20 +81,12 @@ get_color color =
 
 
 view_pixel_grid: Model -> Html Msg
-view_pixel_grid model = div [
-    style "display" "flex",
-    style "flex-direction" "column"
-    ]  (List.indexedMap (\row items ->
-                                    div [
-                                            style "display" "flex",
-                                            style "flex-direction" "row"
-                                    ] (
+view_pixel_grid model = div [class "column"]  (List.indexedMap (\row items ->
+                                    div [class "row"] (
                                         List.indexedMap (\col _ ->
                                             div
                                                 [ style "background-color" (get_pixel_color_from_coords (col, row) model)
-                                                , style "border" "1px solid black"
-                                                , style "height" "30px"
-                                                , style "width" "30px"
+                                                ,  class "pixel"
                                                 , onClick (PaintPixel model.activeColor (col, row))
                                                 ]
                                                 []
@@ -103,28 +95,29 @@ view_pixel_grid model = div [
 
 view_color_button: Model -> Html Msg
 view_color_button model = div [
-    style "display" "flex",
-    style "flex-direction" "column",
-    style "width" "70px"
-    ] (List.map (\color ->
+    class "color-picker"
+    ] ([p [] [text "Get yer colors!"]] ++  (List.map (\color ->
         button
             [ onClick (UpdateActiveColor color)
             , style "background-color" (colorToString color)
-            , style "margin" "1px"
-            , style "padding" "10px"
+            , class "color-button"
             ]
             [ text ""]
-        ) [Red, Black, Blue, Green, Yellow, White])
+        ) [Red, Black, Blue, Green, Yellow, White]))
 
 
 view : Model -> Html Msg
 view model =
-  div []
+  div [class "container"]
     [
-      h1 [ onClick (PaintPixel Blue (0,0)) ] [ text "this is a page"],
-      h1 [ onClick (PaintPixel Red (1,1)) ] [ text "this is also a page"],
-      view_pixel_grid model,
-      view_color_button model
+      h1 [] [ text "ART HERO!!!!"],
+      div [class "row-bottom"] [
+      view_color_button model,
+      div [class "column"] [
+      button [onClick Undo] [text "Undo"],
+      view_pixel_grid model
+      ]
+      ]
     ]
 
 

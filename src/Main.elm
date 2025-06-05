@@ -125,6 +125,7 @@ type Msg
     | ShowSavedMasterpiece MasterpieceListItem
     | SavedMasterPiece (Result Http.Error MasterpieceListItem)
     | UpdateName String
+    | CreateNewMasterPiece
     | None
 
 
@@ -242,7 +243,7 @@ update msg model =
             ( model, saveMasterpiece model.name model.pixelMap model.currentMasterPieceId )
 
         ShowSavedMasterpiece masterpiece ->
-            ( { model | name = masterpiece.name, pixelMap = masterpiece.pixelMap }, Cmd.none )
+            ( { model | name = masterpiece.name, pixelMap = masterpiece.pixelMap , currentMasterPieceId = ExistingMasterPiece masterpiece.id}, Cmd.none )
 
         SavedMasterPiece result ->
             case result of
@@ -256,13 +257,24 @@ update msg model =
                                     ( { model | savedMasterpieces = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
 
                                 ExistingMasterPiece existingId ->
-                                    ( { model | savedMasterpieces = Success (List.filter (\mp -> mp.id /= existingId) existingMasterpieces) :: masterpiece }, Cmd.none )
+                                    ( model , Cmd.none )
 
                         _ ->
                             ( { model | savedMasterpieces = Success [ masterpiece ] }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
+
+        CreateNewMasterPiece ->
+            ( { model
+                | pixelMap = Dict.empty
+                , history = [ Dict.empty ]
+                , future = [ Dict.empty ]
+                , name = ""
+                , currentMasterPieceId = NewMasterPiece
+              }
+            , Cmd.none
+            )
 
         None ->
             ( model, Cmd.none )
@@ -397,7 +409,8 @@ view_pixel_grid model =
 view_saved_masterpieces : Model -> Html Msg
 view_saved_masterpieces model =
     div
-        [ class "color-picker"
+        [ class "color-picker",
+        style "margin-left" "20px"
         ]
         ([ p [] [ text "Your previous beauties" ] ]
             ++ (case model.savedMasterpieces of
@@ -522,10 +535,17 @@ view model =
                             ]
                             [ text "Redo" ]
                         , button [ onClick SaveMasterPiece, class "button" ] [ text "Save Masterpiece!" ]
+                        , button
+                            [ onClick CreateNewMasterPiece
+                            , class
+                                  "button"
+
+                            ]
+                            [ text "New masterpiece" ]
                         ]
                     , view_pixel_grid model
-                    , view_saved_masterpieces model
                     ]
+                     ,view_saved_masterpieces model
                 ]
             ]
         ]
@@ -634,7 +654,7 @@ saveMasterpiece name pixelMap currentMasterPieceId =
             Http.request
                 { method = "PATCH"
                 , headers = []
-                , url = "http://localhost:3000/masterpiece" ++ String.fromInt id
+                , url = "http://localhost:3000/masterpiece/" ++ String.fromInt id
                 , body = Http.jsonBody (encodeMasterpiece name pixelMap)
                 , expect = Http.expectJson SavedMasterPiece masterpieceListItemDecoder
                 , timeout = Nothing

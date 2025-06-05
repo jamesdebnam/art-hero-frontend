@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Browser
+import Browser exposing (Document)
 import Browser.Navigation
 import Dict exposing (Dict)
 import Html exposing (Html, button, div, h1, input, label, p, text)
@@ -139,7 +139,7 @@ update msg model =
             ( { model | activeColor = color }, Cmd.none )
 
         UpdateBrushSize newBrushSize ->
-            { model | brushSize = newBrushSize }
+            ({ model | brushSize = newBrushSize }, Cmd.none)
 
 
         PaintPixel color pixelCoords mouseAction ->
@@ -298,7 +298,7 @@ paintAtBrushSize brushSize pixelCoords color pixelMap =
             let
                 ( x, y ) = pixelCoords
                 coordsToPaint =
-                    [(x, y), ( x-1, y-1 ), ( x-1, y ), ( x-1, y+1 )
+                    [(x, y), ( x - 1, y - 1 ), ( x - 1, y ), ( x - 1, y+1 )
                     , ( x, y - 1 ), ( x, y + 1 )
                     , ( x + 1, y - 1 ), ( x + 1, y ), ( x + 1, y + 1 )
                     ]
@@ -309,11 +309,11 @@ paintAtBrushSize brushSize pixelCoords color pixelMap =
             let
                 (x, y) = pixelCoords
                 coordsToPaint =
-                    [(x, y), ( x-1, y-1 ), ( x-1, y ), ( x-1, y+1 ), ( x-1, y+2 ), (x-1, y-2)
-                    , ( x-2, y-2 ), ( x-2, y-1 ), ( x-2, y ), ( x-2, y+1 ), ( x-2, y+2 )
+                    [(x, y), ( x - 1, y - 1 ), ( x - 1, y ), ( x - 1, y+1 ), ( x - 1, y+2 ), (x - 1, y - 2)
+                    , ( x - 2, y - 2 ), ( x - 2, y - 1 ), ( x - 2, y ), ( x - 2, y+1 ), ( x - 2, y+2 )
                     , ( x, y - 1 ), ( x, y + 1 ), (x, y - 2), (x, y + 2)
-                    , ( x+1, y-2 ), ( x+1, y-1 ), ( x+1, y ), ( x+1, y+1 ), ( x+1, y+2 )
-                    , ( x+2, y), ( x+2, y-1 ), ( x+2, y+2 ), ( x+2, y-2 ), ( x+2, y+1)
+                    , ( x+1, y - 2 ), ( x+1, y - 1 ), ( x+1, y ), ( x+1, y+1 ), ( x+1, y+2 )
+                    , ( x+2, y), ( x+2, y - 1 ), ( x+2, y+2 ), ( x+2, y - 2 ), ( x+2, y+1)
                     ]
             in
             List.foldl (\coord acc -> Dict.insert coord color acc) pixelMap coordsToPaint
@@ -404,23 +404,28 @@ view_brush_size_button model =
             [ Small, Medium, Large]
      )
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
-    div [ class "container" ]
-        [ h1 [] [ text "ART HERO!!!!" ]
-        , div [ class "row-bottom" ]
-            [ div [class "column"]
-            [
-            view_color_button model
-            ,view_brush_size_button model
-            ]
-            , div [ class "column" ]
-                [ div [class "button-row"] [ button
-
-                    [ onClick Undo
-                    , class
-                        (if List.length model.history > 0 then
-                            "button"
+    { title = "Fuckin elm"
+    , body =
+        [ div [ class "container" ]
+            [ h1 [] [ text "ART HERO!!!!" ]
+            , div [ class "row-bottom" ]
+                [ view_color_button model
+                   ,view_brush_size_button model
+                , div [ class "column" ]
+                    [ div
+                        [ class "input-row"
+                        ]
+                        [ label [] [ text "Name:" ]
+                        , input [ placeholder "Mona lisa", value model.name, onInput UpdateName ] []
+                        ]
+                    , div [ class "button-row" ]
+                        [ button
+                            [ onClick Undo
+                            , class
+                                (if List.length model.history > 0 then
+                                    "button"
 
                                  else
                                     "button button-disabled"

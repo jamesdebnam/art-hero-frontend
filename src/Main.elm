@@ -116,13 +116,13 @@ update msg model =
         UpdateMouseDown mouseIsDown ->
             case mouseIsDown of
                 True ->
-                    ({ model | mouseIsDown = mouseIsDown }, Cmd.none)
+                    ( { model | mouseIsDown = mouseIsDown }, Cmd.none )
 
                 False ->
-                    ({ model | mouseIsDown = mouseIsDown, history = model.pixelMap :: model.history }, Cmd.none)
+                    ( { model | mouseIsDown = mouseIsDown, history = model.pixelMap :: model.history }, Cmd.none )
 
         UpdateActiveColor color ->
-            ({ model | activeColor = color }, Cmd.none)
+            ( { model | activeColor = color }, Cmd.none )
 
         PaintPixel color pixelCoords mouseAction ->
             case ( mouseAction, model.mouseIsDown ) of
@@ -134,24 +134,28 @@ update msg model =
                         newHistory =
                             model.pixelMap :: model.history
                     in
-                      ({ model
-                          | pixelMap = newPixelMap
-                          , history = List.take maxHistorySize newHistory
-                          , future = []
-                      }, Cmd.none)
+                    ( { model
+                        | pixelMap = newPixelMap
+                        , history = List.take maxHistorySize newHistory
+                        , future = []
+                      }
+                    , Cmd.none
+                    )
 
                 ( MouseOver, True ) ->
                     let
                         newPixelMap =
                             Dict.insert pixelCoords color model.pixelMap
                     in
-                      ({ model
-                          | pixelMap = newPixelMap
-                          , future = []
-                      }, Cmd.none)
+                    ( { model
+                        | pixelMap = newPixelMap
+                        , future = []
+                      }
+                    , Cmd.none
+                    )
 
                 ( MouseOver, False ) ->
-                    (model, Cmd.none)
+                    ( model, Cmd.none )
 
         Undo ->
             case model.history of
@@ -160,14 +164,16 @@ update msg model =
                         newFuture =
                             currentState :: model.future
                     in
-                      ({ model
-                          | pixelMap = previousState
-                          , history = previousState :: restOfTheList
-                          , future = List.take maxFutureSize newFuture
-                      }, Cmd.none)
+                    ( { model
+                        | pixelMap = previousState
+                        , history = previousState :: restOfTheList
+                        , future = List.take maxFutureSize newFuture
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
-                    (model, Cmd.none)
+                    ( model, Cmd.none )
 
         Redo ->
             case model.future of
@@ -176,24 +182,27 @@ update msg model =
                         newHistory =
                             futureState :: model.history
                     in
-                      ({ model
-                          | pixelMap = futureState
-                          , future = restOfTheList
-                          , history = List.take maxHistorySize newHistory
-                      }, Cmd.none)
+                    ( { model
+                        | pixelMap = futureState
+                        , future = restOfTheList
+                        , history = List.take maxHistorySize newHistory
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
-                    (model, Cmd.none)
+                    ( model, Cmd.none )
 
         GotMasterpieces result ->
             case result of
                 Ok jsonData ->
-                    ({ model | fetchState = Success jsonData }, Cmd.none)
+                    ( { model | fetchState = Success jsonData }, Cmd.none )
 
                 Err _ ->
-                    ({ model | fetchState = Error }, Cmd.none)
+                    ( { model | fetchState = Error }, Cmd.none )
+
         None ->
-          (model, Cmd.none)
+            ( model, Cmd.none )
 
 
 get_pixel_color_from_coords : PixelCoords -> Model -> String

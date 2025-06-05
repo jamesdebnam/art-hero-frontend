@@ -45,6 +45,11 @@ type Color
     | Yellow
     | White
 
+type BrushSize 
+    = Small 
+    | Medium
+    | Large
+
 
 type alias PixelCoords =
     ( Int, Int )
@@ -72,6 +77,7 @@ type alias Model =
     , future : History
     , fetchState : FetchState
     , name : String
+    , brushSize : BrushSize
     }
 
 
@@ -84,6 +90,7 @@ init _ _ _ =
       , future = [ Dict.empty ]
       , fetchState = Loading
       , name = ""
+      , brushSize = Small 
       }
     , getMasterpieces
     )
@@ -101,6 +108,7 @@ type alias FetchedMasterpieces =
 type Msg
     = UpdateMouseDown Bool
     | UpdateActiveColor Color
+    | UpdateBrushSize BrushSize
     | PaintPixel Color PixelCoords MouseAction
     | Undo
     | Redo
@@ -130,12 +138,20 @@ update msg model =
         UpdateActiveColor color ->
             ( { model | activeColor = color }, Cmd.none )
 
+        UpdateBrushSize newBrushSize ->
+            { model | brushSize = newBrushSize }
+
+
         PaintPixel color pixelCoords mouseAction ->
             case ( mouseAction, model.mouseIsDown ) of
                 ( Clicked, _ ) ->
                     let
                         newPixelMap =
-                            Dict.insert pixelCoords color model.pixelMap
+                            paintAtBrushSize
+                                model.brushSize
+                                pixelCoords
+                                color
+                                model.pixelMap   
 
                         newHistory =
                             model.pixelMap :: model.history
@@ -151,7 +167,11 @@ update msg model =
                 ( MouseOver, True ) ->
                     let
                         newPixelMap =
-                            Dict.insert pixelCoords color model.pixelMap
+                            paintAtBrushSize 
+                                model.brushSize
+                                pixelCoords
+                                color
+                                model.pixelMap  
                     in
                     ( { model
                         | pixelMap = newPixelMap
@@ -263,6 +283,42 @@ get_color color =
                 White ->
                     "white"
 
+paintAtBrushSize : BrushSize
+    -> PixelCoords
+    -> Color
+    -> Dict PixelCoords Color
+    -> Dict PixelCoords Color
+
+paintAtBrushSize brushSize pixelCoords color pixelMap =
+    case brushSize of
+        Small ->
+            Dict.insert pixelCoords color pixelMap
+
+        Medium ->
+            let
+                ( x, y ) = pixelCoords
+                coordsToPaint =
+                    [(x, y), ( x-1, y-1 ), ( x-1, y ), ( x-1, y+1 )
+                    , ( x, y - 1 ), ( x, y + 1 )
+                    , ( x + 1, y - 1 ), ( x + 1, y ), ( x + 1, y + 1 )
+                    ]
+            in
+            List.foldl (\coord acc -> Dict.insert coord color acc) pixelMap coordsToPaint
+
+        Large ->
+            let
+                (x, y) = pixelCoords
+                coordsToPaint =
+                    [(x, y), ( x-1, y-1 ), ( x-1, y ), ( x-1, y+1 ), ( x-1, y+2 ), (x-1, y-2)
+                    , ( x-2, y-2 ), ( x-2, y-1 ), ( x-2, y ), ( x-2, y+1 ), ( x-2, y+2 )
+                    , ( x, y - 1 ), ( x, y + 1 ), (x, y - 2), (x, y + 2)
+                    , ( x+1, y-2 ), ( x+1, y-1 ), ( x+1, y ), ( x+1, y+1 ), ( x+1, y+2 )
+                    , ( x+2, y), ( x+2, y-1 ), ( x+2, y+2 ), ( x+2, y-2 ), ( x+2, y+1)
+                    ]
+            in
+            List.foldl (\coord acc -> Dict.insert coord color acc) pixelMap coordsToPaint
+
+
 
 view_pixel_grid : Model -> Html Msg
 view_pixel_grid model =
@@ -297,7 +353,7 @@ view_color_button model =
     div
         [ class "color-picker"
         ]
-        ([ p [] [ text "Get yer colors!" ] ]
+        ([ p [] [ text "Get yer colours!" ] ]
             ++ List.map
                 (\color ->
                     button
@@ -316,28 +372,55 @@ view_color_button model =
                 [ Red, Black, Blue, Green, Yellow, White ]
         )
 
+view_brush_size_button : Model -> Html Msg
+view_brush_size_button model =
+    div
+    [ class "brush-size-picker"
+    ]
+     ([ p [] [ text "Get yer brush stroke size!" ] ]
+        ++ List.map
+            (\brushSize ->
+                button
+                    [ onClick (UpdateBrushSize brushSize)
+                    , class
+                        (if model.brushSize == brushSize then
+                            "brush-size-button active-button"
 
-view : Model -> Browser.Document Msg
+                            else
+                            "brush-size-button"
+                        )
+                    ]
+                    [ text (case brushSize of
+                        Small ->
+                            "Small"
+
+                        Medium ->
+                            "Medium"
+
+                        Large ->
+                            "Large"
+                    )]
+            )
+            [ Small, Medium, Large]
+     )
+
+view : Model -> Html Msg
 view model =
-    { title = "Fuckin elm"
-    , body =
-        [ div [ class "container" ]
-            [ h1 [] [ text "ART HERO!!!!" ]
-            , div [ class "row-bottom" ]
-                [ view_color_button model
-                , div [ class "column" ]
-                    [ div
-                        [ class "input-row"
-                        ]
-                        [ label [] [ text "Name:" ]
-                        , input [ placeholder "Mona lisa", value model.name, onInput UpdateName ] []
-                        ]
-                    , div [ class "button-row" ]
-                        [ button
-                            [ onClick Undo
-                            , class
-                                (if List.length model.history > 0 then
-                                    "button"
+    div [ class "container" ]
+        [ h1 [] [ text "ART HERO!!!!" ]
+        , div [ class "row-bottom" ]
+            [ div [class "column"]
+            [
+            view_color_button model
+            ,view_brush_size_button model
+            ]
+            , div [ class "column" ]
+                [ div [class "button-row"] [ button
+
+                    [ onClick Undo
+                    , class
+                        (if List.length model.history > 0 then
+                            "button"
 
                                  else
                                     "button button-disabled"

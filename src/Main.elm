@@ -9,7 +9,7 @@ import Html.Events exposing (onClick, onInput, onMouseDown, onMouseOver, onMouse
 import Http
 import Json.Decode as D
 import Json.Encode as E
-import Url exposing (Protocol(..))
+import Url
 
 
 main =
@@ -45,8 +45,9 @@ type Color
     | Yellow
     | White
 
-type BrushSize 
-    = Small 
+
+type BrushSize
+    = Small
     | Medium
     | Large
 
@@ -69,6 +70,11 @@ type SavedMasterPieces
     | Error
 
 
+type CurrentMasterpieceId
+    = NewMasterPiece
+    | ExistingMasterPiece Int
+
+
 type alias Model =
     { mouseIsDown : Bool
     , activeColor : Color
@@ -78,6 +84,7 @@ type alias Model =
     , savedMasterpieces : SavedMasterPieces
     , name : String
     , brushSize : BrushSize
+    , currentMasterPieceId : CurrentMasterpieceId
     }
 
 
@@ -90,7 +97,8 @@ init _ _ _ =
       , future = [ Dict.empty ]
       , savedMasterpieces = Loading
       , name = ""
-      , brushSize = Small 
+      , brushSize = Small
+      , currentMasterPieceId = NewMasterPiece
       }
     , getMasterpieces
     )
@@ -140,8 +148,7 @@ update msg model =
             ( { model | activeColor = color }, Cmd.none )
 
         UpdateBrushSize newBrushSize ->
-            ({ model | brushSize = newBrushSize }, Cmd.none)
-
+            ( { model | brushSize = newBrushSize }, Cmd.none )
 
         PaintPixel color pixelCoords mouseAction ->
             case ( mouseAction, model.mouseIsDown ) of
@@ -152,7 +159,7 @@ update msg model =
                                 model.brushSize
                                 pixelCoords
                                 color
-                                model.pixelMap   
+                                model.pixelMap
 
                         newHistory =
                             model.pixelMap :: model.history
@@ -168,11 +175,11 @@ update msg model =
                 ( MouseOver, True ) ->
                     let
                         newPixelMap =
-                            paintAtBrushSize 
+                            paintAtBrushSize
                                 model.brushSize
                                 pixelCoords
                                 color
-                                model.pixelMap  
+                                model.pixelMap
                     in
                     ( { model
                         | pixelMap = newPixelMap
@@ -232,10 +239,10 @@ update msg model =
                     ( { model | savedMasterpieces = Error }, Cmd.none )
 
         SaveMasterPiece ->
-            ( model, saveMasterpiece model.name model.pixelMap )
+            ( model, saveMasterpiece model.name model.pixelMap model.currentMasterPieceId )
 
         ShowSavedMasterpiece masterpiece ->
-            ( { model | name = masterpiece.name, pixelMap = masterpiece.pixelMap }, Cmd.none) 
+            ( { model | name = masterpiece.name, pixelMap = masterpiece.pixelMap }, Cmd.none )
 
         SavedMasterPiece result ->
             case result of
@@ -244,7 +251,12 @@ update msg model =
                     -- if it is success, we append the saved masterpiece to state
                     case model.savedMasterpieces of
                         Success existingMasterpieces ->
-                            ( { model | savedMasterpieces = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
+                            case model.currentMasterPieceId of
+                                NewMasterPiece ->
+                                    ( { model | savedMasterpieces = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
+
+                                ExistingMasterPiece existingId ->
+                                    ( { model | savedMasterpieces = Success (List.filter (\mp -> mp.id /= existingId) existingMasterpieces) :: masterpiece }, Cmd.none )
 
                         _ ->
                             ( { model | savedMasterpieces = Success [ masterpiece ] }, Cmd.none )
@@ -287,12 +299,13 @@ get_color color =
                 White ->
                     "white"
 
-paintAtBrushSize : BrushSize
+
+paintAtBrushSize :
+    BrushSize
     -> PixelCoords
     -> Color
     -> Dict PixelCoords Color
     -> Dict PixelCoords Color
-
 paintAtBrushSize brushSize pixelCoords color pixelMap =
     case brushSize of
         Small ->
@@ -300,28 +313,57 @@ paintAtBrushSize brushSize pixelCoords color pixelMap =
 
         Medium ->
             let
-                ( x, y ) = pixelCoords
+                ( x, y ) =
+                    pixelCoords
+
                 coordsToPaint =
-                    [(x, y), ( x - 1, y - 1 ), ( x - 1, y ), ( x - 1, y+1 )
-                    , ( x, y - 1 ), ( x, y + 1 )
-                    , ( x + 1, y - 1 ), ( x + 1, y ), ( x + 1, y + 1 )
+                    [ ( x, y )
+                    , ( x - 1, y - 1 )
+                    , ( x - 1, y )
+                    , ( x - 1, y + 1 )
+                    , ( x, y - 1 )
+                    , ( x, y + 1 )
+                    , ( x + 1, y - 1 )
+                    , ( x + 1, y )
+                    , ( x + 1, y + 1 )
                     ]
             in
             List.foldl (\coord acc -> Dict.insert coord color acc) pixelMap coordsToPaint
 
         Large ->
             let
-                (x, y) = pixelCoords
+                ( x, y ) =
+                    pixelCoords
+
                 coordsToPaint =
-                    [(x, y), ( x - 1, y - 1 ), ( x - 1, y ), ( x - 1, y+1 ), ( x - 1, y+2 ), (x - 1, y - 2)
-                    , ( x - 2, y - 2 ), ( x - 2, y - 1 ), ( x - 2, y ), ( x - 2, y+1 ), ( x - 2, y+2 )
-                    , ( x, y - 1 ), ( x, y + 1 ), (x, y - 2), (x, y + 2)
-                    , ( x+1, y - 2 ), ( x+1, y - 1 ), ( x+1, y ), ( x+1, y+1 ), ( x+1, y+2 )
-                    , ( x+2, y), ( x+2, y - 1 ), ( x+2, y+2 ), ( x+2, y - 2 ), ( x+2, y+1)
+                    [ ( x, y )
+                    , ( x - 1, y - 1 )
+                    , ( x - 1, y )
+                    , ( x - 1, y + 1 )
+                    , ( x - 1, y + 2 )
+                    , ( x - 1, y - 2 )
+                    , ( x - 2, y - 2 )
+                    , ( x - 2, y - 1 )
+                    , ( x - 2, y )
+                    , ( x - 2, y + 1 )
+                    , ( x - 2, y + 2 )
+                    , ( x, y - 1 )
+                    , ( x, y + 1 )
+                    , ( x, y - 2 )
+                    , ( x, y + 2 )
+                    , ( x + 1, y - 2 )
+                    , ( x + 1, y - 1 )
+                    , ( x + 1, y )
+                    , ( x + 1, y + 1 )
+                    , ( x + 1, y + 2 )
+                    , ( x + 2, y )
+                    , ( x + 2, y - 1 )
+                    , ( x + 2, y + 2 )
+                    , ( x + 2, y - 2 )
+                    , ( x + 2, y + 1 )
                     ]
             in
             List.foldl (\coord acc -> Dict.insert coord color acc) pixelMap coordsToPaint
-
 
 
 view_pixel_grid : Model -> Html Msg
@@ -351,30 +393,34 @@ view_pixel_grid model =
             )
         ]
 
+
 view_saved_masterpieces : Model -> Html Msg
 view_saved_masterpieces model =
-  div
-      [ class "color-picker"
-      ]
-      ([p [] [ text "Your previous beauties" ]] ++
-      (
-        case model.savedMasterpieces of
-          Success masterpieces ->
-            List.map (\masterpiece ->
-              button [
-                onClick (ShowSavedMasterpiece masterpiece)
-                , style "background-colour" "cornsilk"
-                , class "color-button"
-              ]
-              [ text masterpiece.name ]
-            ) masterpieces
-          Loading ->
-            [div[][ text "Loading..."]]
-          Error ->
-            [div [] [ text "Da fuq?" ]]
-      )
-      )
-  
+    div
+        [ class "color-picker"
+        ]
+        ([ p [] [ text "Your previous beauties" ] ]
+            ++ (case model.savedMasterpieces of
+                    Success masterpieces ->
+                        List.map
+                            (\masterpiece ->
+                                button
+                                    [ onClick (ShowSavedMasterpiece masterpiece)
+                                    , style "background-colour" "cornsilk"
+                                    , class "color-button"
+                                    ]
+                                    [ text masterpiece.name ]
+                            )
+                            masterpieces
+
+                    Loading ->
+                        [ div [] [ text "Loading..." ] ]
+
+                    Error ->
+                        [ div [] [ text "Da fuq?" ] ]
+               )
+        )
+
 
 view_color_button : Model -> Html Msg
 view_color_button model =
@@ -400,37 +446,41 @@ view_color_button model =
                 [ Red, Black, Blue, Green, Yellow, White ]
         )
 
+
 view_brush_size_button : Model -> Html Msg
 view_brush_size_button model =
     div
-    [ class "brush-size-picker"
-    ]
-     ([ p [] [ text "Get yer brush stroke size!" ] ]
-        ++ List.map
-            (\brushSize ->
-                button
-                    [ onClick (UpdateBrushSize brushSize)
-                    , class
-                        (if model.brushSize == brushSize then
-                            "brush-size-button active-button"
+        [ class "brush-size-picker"
+        ]
+        ([ p [] [ text "Get yer brush stroke size!" ] ]
+            ++ List.map
+                (\brushSize ->
+                    button
+                        [ onClick (UpdateBrushSize brushSize)
+                        , class
+                            (if model.brushSize == brushSize then
+                                "brush-size-button active-button"
 
-                            else
-                            "brush-size-button"
-                        )
-                    ]
-                    [ text (case brushSize of
-                        Small ->
-                            "Small"
+                             else
+                                "brush-size-button"
+                            )
+                        ]
+                        [ text
+                            (case brushSize of
+                                Small ->
+                                    "Small"
 
-                        Medium ->
-                            "Medium"
+                                Medium ->
+                                    "Medium"
 
-                        Large ->
-                            "Large"
-                    )]
-            )
-            [ Small, Medium, Large]
-     )
+                                Large ->
+                                    "Large"
+                            )
+                        ]
+                )
+                [ Small, Medium, Large ]
+        )
+
 
 view : Model -> Document Msg
 view model =
@@ -440,7 +490,7 @@ view model =
             [ h1 [] [ text "ART HERO!!!!" ]
             , div [ class "row-bottom" ]
                 [ view_color_button model
-                   ,view_brush_size_button model
+                , view_brush_size_button model
                 , div [ class "column" ]
                     [ div
                         [ class "input-row"
@@ -502,6 +552,7 @@ colorToString color =
 
         White ->
             "White"
+
 
 type alias MasterpieceData =
     Dict PixelCoords Color
@@ -569,13 +620,26 @@ encodeMasterpiece name pixelMap =
         ]
 
 
-saveMasterpiece : String -> PixelMap -> Cmd Msg
-saveMasterpiece name pixelMap =
-    Http.post
-        { url = "http://localhost:3000/masterpiece"
-        , expect = Http.expectJson SavedMasterPiece masterpieceListItemDecoder
-        , body = Http.jsonBody (encodeMasterpiece name pixelMap)
-        }
+saveMasterpiece : String -> PixelMap -> CurrentMasterpieceId -> Cmd Msg
+saveMasterpiece name pixelMap currentMasterPieceId =
+    case currentMasterPieceId of
+        NewMasterPiece ->
+            Http.post
+                { url = "http://localhost:3000/masterpiece"
+                , expect = Http.expectJson SavedMasterPiece masterpieceListItemDecoder
+                , body = Http.jsonBody (encodeMasterpiece name pixelMap)
+                }
+
+        ExistingMasterPiece id ->
+            Http.request
+                { method = "PATCH"
+                , headers = []
+                , url = "http://localhost:3000/masterpiece" ++ String.fromInt id
+                , body = Http.jsonBody (encodeMasterpiece name pixelMap)
+                , expect = Http.expectJson SavedMasterPiece masterpieceListItemDecoder
+                , timeout = Nothing
+                , tracker = Nothing
+                }
 
 
 colourDecoder : D.Decoder Color
@@ -667,7 +731,6 @@ masterpieceDataDecoder =
             )
 
 
-
 masterpieceDataFieldDecoder : D.Decoder ( MasterpieceData, String )
 masterpieceDataFieldDecoder =
     D.map2 Tuple.pair
@@ -688,4 +751,3 @@ masterpieceListItemDecoder =
         (D.field "id" D.int)
         (D.field "data" masterpieceDataFieldDecoder)
         (D.field "created_at" D.string)
-

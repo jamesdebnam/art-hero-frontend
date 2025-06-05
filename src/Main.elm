@@ -285,3 +285,119 @@ colorToString color =
 
         White ->
             "White"
+
+-- API DECODING SHIT --
+
+type alias MasterpieceData = Dict PixelCoords Color
+
+type alias MasterpieceList = List MasterpieceListItem
+
+type alias MasterpieceListItem = {
+    id: Int,
+    data: MasterpieceData,
+    created_at: String
+  }
+
+type Model
+  = Failure
+  | Loading
+  | Success MasterpieceList
+
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model = 
+  case msg of
+    FetchMasterpieces ->
+      (Loading, getMasterpieces)
+
+    GotMasterpieces result ->
+      case result of
+        Ok jsonData ->
+          (Success jsonData, Cmd.none)
+        Err _ ->
+          (Failure, Cmd.none)
+
+getMasterpieces : Cmd Msg
+getMasterpieces =
+  Http.get
+    {
+      url = "http://localhost:3000/masterpiece",
+      expect = Http.expectJson GotMasterpieces (D.list masterpieceListItemDecoder)
+    }
+
+colourDecoder : D.Decoder Color
+colourDecoder =
+    D.string
+        |> D.andThen
+            (\str ->
+                case str of
+                    "Red" -> D.succeed Red
+                    "Black" -> D.succeed Black
+                    "Blue" -> D.succeed Blue
+                    "Green" -> D.succeed Green
+                    "Yellow" -> D.succeed Yellow
+                    "White" -> D.succeed White
+                    _ -> D.fail ("Unknown colour: " ++ str)
+            )
+
+coordsFromString : String -> Result String PixelCoords
+coordsFromString str =
+    let
+        trimmed =
+            String.trim str
+                |> String.dropLeft 1  -- remove '['
+                |> String.dropRight 1 -- remove ']'
+
+        parts =
+            String.split "," trimmed
+    in
+    case parts of
+        [xStr, yStr] ->
+            case (String.toInt xStr, String.toInt yStr) of
+                (Just x, Just y) ->
+                    Ok (x, y)
+
+                _ ->
+                    Err ("Invalid coordinate numbers in: " ++ str)
+
+        _ ->
+            Err ("Invalid coordinate format: " ++ str)
+
+masterpieceDataDecoder : D.Decoder MasterpieceData
+masterpieceDataDecoder =
+    D.dict colourDecoder
+        |> D.andThen
+            (\rawDict ->
+                let
+                    resultList =
+                        Dict.toList rawDict
+                            |> List.map (\(k, v) -> Result.map (\coords -> (coords, v)) (coordsFromString k))
+                in
+                case List.foldr
+                        (\res acc ->
+                            case (res, acc) of
+                                (Ok (coords, colour), Ok dict) ->
+                                    Ok (Dict.insert coords colour dict)
+
+                                (Err e, _) ->
+                                    Err e
+
+                                (_, Err e) ->
+                                    Err e
+                        )
+                        (Ok Dict.empty)
+                        resultList of
+                    Ok finalDict ->
+                        D.succeed finalDict
+
+                    Err msg ->
+                        D.fail msg
+            )
+
+masterpieceListItemDecoder : D.Decoder MasterpieceListItem
+masterpieceListItemDecoder =
+    D.map3 MasterpieceListItem
+        (D.field "id" D.int)
+        (D.field "data" masterpieceDataDecoder)
+        (D.field "created_at" D.string)
+
+-- API DECODING SHIT END --

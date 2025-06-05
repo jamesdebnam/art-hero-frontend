@@ -4,7 +4,7 @@ import Browser exposing (Document)
 import Browser.Navigation
 import Dict exposing (Dict)
 import Html exposing (Html, button, div, h1, input, label, p, text)
-import Html.Attributes exposing (class, placeholder, style, value)
+import Html.Attributes exposing (class, id, placeholder, style, value)
 import Html.Events exposing (onClick, onInput, onMouseDown, onMouseOver, onMouseUp)
 import Http
 import Json.Decode as D
@@ -63,7 +63,7 @@ type alias History =
     List PixelMap
 
 
-type FetchState
+type SavedMasterPieces
     = Loading
     | Success MasterpieceList
     | Error
@@ -75,7 +75,7 @@ type alias Model =
     , pixelMap : PixelMap
     , history : History
     , future : History
-    , fetchState : FetchState
+    , savedMasterpieces : SavedMasterPieces
     , name : String
     , brushSize : BrushSize
     }
@@ -88,7 +88,7 @@ init _ _ _ =
       , pixelMap = Dict.empty
       , history = [ Dict.empty ]
       , future = [ Dict.empty ]
-      , fetchState = Loading
+      , savedMasterpieces = Loading
       , name = ""
       , brushSize = Small 
       }
@@ -114,6 +114,7 @@ type Msg
     | Redo
     | GotMasterpieces (Result Http.Error FetchedMasterpieces)
     | SaveMasterPiece
+    | ShowSavedMasterpiece MasterpieceListItem
     | SavedMasterPiece (Result Http.Error MasterpieceListItem)
     | UpdateName String
     | None
@@ -225,25 +226,28 @@ update msg model =
         GotMasterpieces result ->
             case result of
                 Ok jsonData ->
-                    ( { model | fetchState = Success jsonData }, Cmd.none )
+                    ( { model | savedMasterpieces = Success jsonData }, Cmd.none )
 
                 Err _ ->
-                    ( { model | fetchState = Error }, Cmd.none )
+                    ( { model | savedMasterpieces = Error }, Cmd.none )
 
         SaveMasterPiece ->
             ( model, saveMasterpiece model.name model.pixelMap )
+
+        ShowSavedMasterpiece masterpiece ->
+            ( { model | name = masterpiece.name, pixelMap = masterpiece.pixelMap }, Cmd.none) 
 
         SavedMasterPiece result ->
             case result of
                 Ok masterpiece ->
                     -- If fetchStat is failed, then we set it to success, with the one saved masterpiece
                     -- if it is success, we append the saved masterpiece to state
-                    case model.fetchState of
+                    case model.savedMasterpieces of
                         Success existingMasterpieces ->
-                            ( { model | fetchState = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
+                            ( { model | savedMasterpieces = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
 
                         _ ->
-                            ( { model | fetchState = Success [ masterpiece ] }, Cmd.none )
+                            ( { model | savedMasterpieces = Success [ masterpiece ] }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -347,6 +351,31 @@ view_pixel_grid model =
             )
         ]
 
+view_saved_masterpieces : Model -> Html Msg
+view_saved_masterpieces model =
+  div
+      [ class "color-picker"
+      ]
+      ([p [] [ text "Your previous beauties" ]] ++
+      (
+        case model.savedMasterpieces of
+          Success masterpieces ->
+            List.map (\masterpiece ->
+              button [
+                onClick (ShowSavedMasterpiece masterpiece.data)
+                , style "background-colour" "cornsilk"
+                , class "color-button"
+                , id masterpiece.id
+              ]
+              [ text masterpiece.name ]
+            ) masterpieces
+          Loading ->
+            [div[][ text "Loading..."]]
+          Error ->
+            [div [] [ text "Da fuq?" ]]
+      )
+      )
+  
 
 view_color_button : Model -> Html Msg
 view_color_button model =
@@ -446,6 +475,7 @@ view model =
                         , button [ onClick SaveMasterPiece, class "button" ] [ text "Save Masterpiece!" ]
                         ]
                     , view_pixel_grid model
+                    , view_saved_masterpieces model
                     ]
                 ]
             ]
@@ -473,11 +503,6 @@ colorToString color =
 
         White ->
             "White"
-
-
-
--- API DECODING SHIT --
-
 
 type alias MasterpieceData =
     Dict PixelCoords Color
@@ -665,6 +690,3 @@ masterpieceListItemDecoder =
         (D.field "data" masterpieceDataFieldDecoder)
         (D.field "created_at" D.string)
 
-
-
--- API DECODING SHIT END --

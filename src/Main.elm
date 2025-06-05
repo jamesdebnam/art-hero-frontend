@@ -3,12 +3,13 @@ module Main exposing (..)
 import Browser
 import Browser.Navigation
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, h1, p, text)
-import Html.Attributes exposing (class, style)
-import Html.Events exposing (onClick, onMouseDown, onMouseOver, onMouseUp)
+import Html exposing (Html, button, div, h1, input, label, p, text)
+import Html.Attributes exposing (class, placeholder, style, value)
+import Html.Events exposing (onClick, onInput, onMouseDown, onMouseOver, onMouseUp)
 import Http
 import Json.Decode as D
-import Url
+import Json.Encode as E
+import Url exposing (Protocol(..))
 
 
 main =
@@ -70,6 +71,7 @@ type alias Model =
     , history : History
     , future : History
     , fetchState : FetchState
+    , name : String
     }
 
 
@@ -81,6 +83,7 @@ init _ _ _ =
       , history = [ Dict.empty ]
       , future = [ Dict.empty ]
       , fetchState = Loading
+      , name = ""
       }
     , getMasterpieces
     )
@@ -102,6 +105,9 @@ type Msg
     | Undo
     | Redo
     | GotMasterpieces (Result Http.Error FetchedMasterpieces)
+    | SaveMasterPiece
+    | SavedMasterPiece (Result Http.Error MasterpieceListItem)
+    | UpdateName String
     | None
 
 
@@ -193,6 +199,9 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        UpdateName newName ->
+            ( { model | name = newName }, Cmd.none )
+
         GotMasterpieces result ->
             case result of
                 Ok jsonData ->
@@ -200,6 +209,24 @@ update msg model =
 
                 Err _ ->
                     ( { model | fetchState = Error }, Cmd.none )
+
+        SaveMasterPiece ->
+            ( model, saveMasterpiece model.name model.pixelMap )
+
+        SavedMasterPiece result ->
+            case result of
+                Ok masterpiece ->
+                    -- If fetchStat is failed, then we set it to success, with the one saved masterpiece
+                    -- if it is success, we append the saved masterpiece to state
+                    case model.fetchState of
+                        Success existingMasterpieces ->
+                            ( { model | fetchState = Success (masterpiece :: existingMasterpieces) }, Cmd.none )
+
+                        _ ->
+                            ( { model | fetchState = Success [ masterpiece ] }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         None ->
             ( model, Cmd.none )
@@ -299,7 +326,13 @@ view model =
             , div [ class "row-bottom" ]
                 [ view_color_button model
                 , div [ class "column" ]
-                    [ div [ class "button-row" ]
+                    [ div
+                        [ class "input-row"
+                        ]
+                        [ label [] [ text "Name:" ]
+                        , input [ placeholder "Mona lisa", value model.name, onInput UpdateName ] []
+                        ]
+                    , div [ class "button-row" ]
                         [ button
                             [ onClick Undo
                             , class
@@ -322,6 +355,7 @@ view model =
                                 )
                             ]
                             [ text "Redo" ]
+                        , button [ onClick SaveMasterPiece, class "button" ] [ text "Save Masterpiece!" ]
                         ]
                     , view_pixel_grid model
                     ]
@@ -367,7 +401,8 @@ type alias MasterpieceList =
 
 type alias MasterpieceListItem =
     { id : Int
-    , data : MasterpieceData
+    , pixelMap : MasterpieceData
+    , name : String
     , created_at : String
     }
 
@@ -377,6 +412,57 @@ getMasterpieces =
     Http.get
         { url = "http://localhost:3000/masterpiece"
         , expect = Http.expectJson GotMasterpieces (D.list masterpieceListItemDecoder)
+        }
+
+
+encodeColor : Color -> E.Value
+encodeColor color =
+    case color of
+        Red ->
+            E.string "Red"
+
+        Black ->
+            E.string "Black"
+
+        Blue ->
+            E.string "Blue"
+
+        Green ->
+            E.string "Green"
+
+        Yellow ->
+            E.string "Yellow"
+
+        White ->
+            E.string "White"
+
+
+encodePixelCoords : PixelCoords -> String
+encodePixelCoords ( x, y ) =
+    "[" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "]"
+
+
+encodePixelMap : PixelMap -> E.Value
+encodePixelMap pixelMap =
+    Dict.toList pixelMap
+        |> List.map (\( coords, color ) -> ( encodePixelCoords coords, encodeColor color ))
+        |> E.object
+
+
+encodeMasterpiece : String -> PixelMap -> E.Value
+encodeMasterpiece name pixelMap =
+    E.object
+        [ ( "name", E.string name )
+        , ( "pixelMap", encodePixelMap pixelMap )
+        ]
+
+
+saveMasterpiece : String -> PixelMap -> Cmd Msg
+saveMasterpiece name pixelMap =
+    Http.post
+        { url = "http://localhost:3000/masterpiece"
+        , expect = Http.expectJson SavedMasterPiece masterpieceListItemDecoder
+        , body = Http.jsonBody (encodeMasterpiece name pixelMap)
         }
 
 
@@ -469,11 +555,26 @@ masterpieceDataDecoder =
             )
 
 
+
+masterpieceDataFieldDecoder : D.Decoder ( MasterpieceData, String )
+masterpieceDataFieldDecoder =
+    D.map2 Tuple.pair
+        (D.field "pixelMap" masterpieceDataDecoder)
+        (D.field "name" D.string)
+
+
 masterpieceListItemDecoder : D.Decoder MasterpieceListItem
 masterpieceListItemDecoder =
-    D.map3 MasterpieceListItem
+    D.map3
+        (\id ( pixelMap, name ) created_at ->
+            { id = id
+            , pixelMap = pixelMap
+            , name = name
+            , created_at = created_at
+            }
+        )
         (D.field "id" D.int)
-        (D.field "data" masterpieceDataDecoder)
+        (D.field "data" masterpieceDataFieldDecoder)
         (D.field "created_at" D.string)
 
 

@@ -41,3 +41,25 @@
     border:1px solid rgba(0, 0, 0, 0.1);
     height: 30px;
 }
+.active-button {
+    border: 4px solid deepskyblue;
+}
+
+.button-row {
+    display: flex;
+    column-gap: 10px;
+   margin-bottom: 10px;
+}
+
+.button {
+    border-radius: 4px;
+    padding: 10px;
+    width: 100%;
+    border:2px solid black;
+    background-color: white;
+}
+
+.button-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}

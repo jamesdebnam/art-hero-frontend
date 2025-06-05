@@ -12,9 +12,14 @@ main =
 
 
 maxHistorySize : Int
-maxHistorySize = 100
+maxHistorySize =
+    100
+
+
 maxFutureSize : Int
-maxFutureSize = 100
+maxFutureSize =
+    100
+
 
 type Color
     = Red
@@ -84,6 +89,7 @@ update msg model =
                     let
                         newPixelMap =
                             Dict.insert pixelCoords color model.pixelMap
+
                         newHistory =
                             model.pixelMap :: model.history
                     in
@@ -110,7 +116,7 @@ update msg model =
             case model.history of
                 currentState :: previousState :: restOfTheList ->
                     let
-                        newFuture = 
+                        newFuture =
                             currentState :: model.future
                     in
                     { model
@@ -210,7 +216,13 @@ view_color_button model =
                     button
                         [ onClick (UpdateActiveColor color)
                         , style "background-color" (colorToString color)
-                        , class "color-button"
+                        , class
+                            (if model.activeColor == color then
+                                "color-button active-button"
+
+                             else
+                                "color-button"
+                            )
                         ]
                         [ text "" ]
                 )
@@ -225,8 +237,28 @@ view model =
         , div [ class "row-bottom" ]
             [ view_color_button model
             , div [ class "column" ]
-                [ button [ onClick Undo ] [ text "Undo" ]
-                , button [ onClick Redo ] [ text "Redo" ]
+                [ div [class "button-row"] [ button
+
+                    [ onClick Undo
+                    , class
+                        (if List.length model.history > 0 then
+                            "button"
+
+                         else
+                            "button button-disabled"
+                        )
+                    ]
+                    [ text "Undo" ]
+                , button
+                    [ onClick Redo
+                    , class
+                        (if List.length model.future > 0 then
+                            "button"
+                         else
+                            "button button-disabled"
+                        )
+                    ]
+                    [ text "Redo" ]]
                 , view_pixel_grid model
                 ]
             ]

@@ -362,10 +362,9 @@ view_saved_masterpieces model =
           Success masterpieces ->
             List.map (\masterpiece ->
               button [
-                onClick (ShowSavedMasterpiece masterpiece.data)
+                onClick (ShowSavedMasterpiece masterpiece)
                 , style "background-colour" "cornsilk"
                 , class "color-button"
-                , id masterpiece.id
               ]
               [ text masterpiece.name ]
             ) masterpieces
